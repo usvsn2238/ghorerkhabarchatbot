@@ -7,6 +7,7 @@ from datetime import datetime
 from pymongo import MongoClient
 import re
 from groq import Groq
+import certifi
 
 # .env ফাইল থেকে Environment Variables লোড করার জন্য
 load_dotenv()
@@ -24,7 +25,8 @@ CALLMEBOT_API_KEY = os.getenv('CALLMEBOT_API_KEY')
 
 # --- ডেটাবেস কানেকশন ---
 try:
-    client = MongoClient(MONGO_URI)
+    ca = certifi.where()
+    client = MongoClient(MONGO_URI, tlsCAFile=ca)
     db = client.chatbot_db
     chat_history_collection = db.chat_history
     otn_tokens_collection = db.otn_tokens
@@ -126,7 +128,9 @@ def webhook():
                             if groq_client:
                                 try:
                                     bot_response = get_groq_response(sender_id, message_text)
-                                    save_message_to_db(sender_id, 'bot', bot_response)
+                                    # --- চূড়ান্ত পরিবর্তন এখানে ---
+                                    # AI-এর role 'bot' এর পরিবর্তে 'assistant' হিসেবে সেভ করা হচ্ছে
+                                    save_message_to_db(sender_id, 'assistant', bot_response)
                                     
                                     user_facing_response = bot_response
                                     
@@ -209,7 +213,7 @@ def get_groq_response(sender_id, message):
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=messages_for_api,
-            model="llama3-70b-8192", # <-- পরিবর্তন: নতুন এবং শক্তিশালী মডেল
+            model="llama3-70b-8192",
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
