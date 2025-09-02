@@ -22,6 +22,8 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 MONGO_URI = os.getenv('MONGO_URI')
 TELEGRAM_USERNAME = os.getenv('TELEGRAM_USERNAME')
 CALLMEBOT_API_KEY = os.getenv('CALLMEBOT_API_KEY')
+# --- নতুন: মডেলের নাম এখন থেকে Environment Variable থেকে আসবে ---
+GROQ_MODEL_NAME = os.getenv('GROQ_MODEL_NAME', 'llama3-8b-8192') # ডিফল্ট হিসেবে llama3-8b-8192 সেট করা হলো
 
 # --- ডেটাবেস কানেকশন ---
 try:
@@ -50,7 +52,7 @@ KNOWLEDGE_BASE = """
 ৩) বিফ রোল ১০ পিসের প্যাক ২৫০ টাকা 
 ৪) চিকেন সমুচা ১৫ পিসের প্যাক ২২৫ টাকা 
 ৫) ভেজিটেবল সমুচা ১৫ পিসের প্যাক ১৫০ টাকা 
-৬) বিফ সমুচা ১০ পিসের پ্যাক ২৫০ টাকা 
+৬) বিফ সমুচা ১০ পিসের প্যাক ২৫০ টাকা 
 ৭) চিকেন সিঙ্গারা ১০ পিসের  প্যাক ১৫০ টাকা 
 ৮) আলু সিঙ্গারা ১০ পিসের প্যাক ১০০ টাকা 
 ৯) চিকেন কলিজা সিঙ্গারা ১০ পিসের প্যাক ১৬০ টাকা ।
@@ -211,13 +213,14 @@ def get_groq_response(sender_id, message):
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=messages_for_api,
-            model="mixtral-8x7b-32768", # <-- চূড়ান্ত পরিবর্তন: নতুন এবং স্থিতিশীল মডেল
+            model=GROQ_MODEL_NAME, # <-- চূড়ান্ত পরিবর্তন: মডেলের নাম এখন ভ্যারিয়েবল থেকে আসবে
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
         print(f"Groq API Error: {e}")
         return "দুঃখিত, একটি প্রযুক্তিগত সমস্যা হয়েছে। আমরা বিষয়টি দেখছি।"
 
+# (বাকি সব ফাংশন আগের মতোই থাকবে)
 def save_customer_details(sender_id, details_str):
     try:
         details = dict(item.split("=") for item in details_str.strip().split(", "))
@@ -278,7 +281,7 @@ def send_otn_request(recipient_id):
 
 def send_telegram_notification(order_details):
     if not TELEGRAM_USERNAME or not CALLMEBOT_API_KEY:
-        print("Telegram নোটিফিকেশনের জন্য প্রয়োজনীয় তথ্য সেট করা নেই।")
+        # print("Telegram নোটিফিকেশনের জন্য প্রয়োজনীয় তথ্য সেট করা নেই।")
         return
     message_body = f"*নতুন অর্ডার এসেছে!*\n\n{order_details.replace('[ORDER_CONFIRMED]', '').strip()}"
     encoded_message = urllib.parse.quote_plus(message_body)
