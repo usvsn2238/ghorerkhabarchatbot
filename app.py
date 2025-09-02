@@ -91,7 +91,6 @@ STRUCTURED_KNOWLEDGE = [
     # পলিসি এবং অন্যান্য তথ্য
     {"name": "ডেলিভারি চার্জ", "price": 60, "keywords": ["delivery", "charge", "cost", "ডেলিভারি", "চার্জ", "খরচ"]},
     
-    # --- নতুন তথ্য যোগ করা হলো ---
     {
         "name": "অর্ডার করার নিয়ম", 
         "info": "অর্ডার কনফার্ম করতে, পণ্যের নাম, আপনার নাম, ঠিকানা, এবং মোবাইল নাম্বার দিয়ে আমাদের সহযোগিতা করুন।", 
@@ -110,8 +109,7 @@ STRUCTURED_KNOWLEDGE = [
 ]
 INTENT_KEYWORDS = {
     "get_price": ["price", "dam", "দাম", "খরচ", "কত", "প্রাইস"],
-    "get_menu": ["menu", "list", "items", "মেন্যু", "তালিকা", "খাবার"],
-    "get_info": ["info", "janbo", "জানতে", "নিয়ম", "কিভাবে", "কোথায়", "ঠিকানা", "এলাকা"]
+    "get_menu": ["menu", "list", "items", "মেন্যু", "তালিকা", "খাবার"]
 }
 # -----------------------------------------------------------------
 
@@ -129,43 +127,40 @@ def find_faq_response(message):
     lower_message = message.lower()
     for keywords, response in FAQ_RESPONSES.items():
         for keyword in keywords:
-            if re.search(r'\b' + re.escape(keyword) + r'\b', lower_message):
+            # --- পরিবর্তন: আরও নির্ভরযোগ্য কীওয়ার্ড খোঁজার জন্য ---
+            if keyword in lower_message:
                 return response
     return None
 
 def handle_structured_query(message):
     lower_message = message.lower()
     
-    # উদ্দেশ্যগুলো চিহ্নিত করা
-    is_price_query = any(re.search(r'\b' + kw + r'\b', lower_message) for kw in INTENT_KEYWORDS["get_price"])
-    is_menu_query = any(re.search(r'\b' + kw + r'\b', lower_message) for kw in INTENT_KEYWORDS["get_menu"])
-    is_info_query = any(re.search(r'\b' + kw + r'\b', lower_message) for kw in INTENT_KEYWORDS["get_info"])
+    is_price_query = any(keyword in lower_message for keyword in INTENT_KEYWORDS["get_price"])
+    is_menu_query = any(keyword in lower_message for keyword in INTENT_KEYWORDS["get_menu"])
 
-    # যদি কেউ মেন্যু চায়, সবার আগে মেন্যু দেওয়া হবে
     if is_menu_query:
         return FULL_MENU_TEXT
 
-    found_items_price = []
-    found_items_info = []
-
-    # জ্ঞানভান্ডার থেকে প্রাসঙ্গিক তথ্য খোঁজা
+    matched_item = None
+    # প্রথমে গ্রাহকের মেসেজ থেকে একটি নির্দিষ্ট আইটেম খোঁজা হচ্ছে
     for item in STRUCTURED_KNOWLEDGE:
         for keyword in item["keywords"]:
-            if re.search(r'\b' + keyword + r'\b', lower_message):
-                if "price" in item and is_price_query:
-                    found_items_price.append(f"{item['name']}-এর দাম {item['price']} টাকা।")
-                if "info" in item and is_info_query:
-                    found_items_info.append(item['info'])
-                break 
-    
-    # প্রথমে নির্দিষ্ট তথ্যমূলক উত্তর দেওয়া হবে
-    if found_items_info:
-        return "\n".join(found_items_info)
-    # তারপর নির্দিষ্ট দামের উত্তর দেওয়া হবে
-    if found_items_price:
-        return "\n".join(found_items_price)
+            if keyword in lower_message:
+                matched_item = item
+                break
+        if matched_item:
+            break
 
-    # যদি শুধু "দাম কত" বা "প্রাইস লিস্ট" বলে, তাহলে পুরো মেন্যু দেওয়া হবে
+    # যদি কোনো আইটেম পাওয়া যায়
+    if matched_item:
+        # পরীক্ষা করা হচ্ছে গ্রাহক দাম জানতে চায় কিনা
+        if is_price_query and "price" in matched_item:
+            return f"স্যার/ম্যাম, {matched_item['name']}-এর দাম {matched_item['price']} টাকা।"
+        # যদি দাম না চায়, তাহলে সাধারণ তথ্য দেওয়া হচ্ছে
+        if "info" in matched_item:
+            return matched_item["info"]
+            
+    # যদি কোনো নির্দিষ্ট আইটেম খুঁজে না পাওয়া যায়, কিন্তু গ্রাহক দাম জানতে চায়
     if is_price_query:
         return FULL_MENU_TEXT
 
