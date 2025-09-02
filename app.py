@@ -4,8 +4,9 @@ from flask import Flask, request
 import google.generativeai as genai
 from dotenv import load_dotenv
 import urllib.parse
-from datetime import datetime, timedelta
-from pymongo import MongoClient # ডেটাবেসের জন্য নতুন ইম্পোর্ট
+from datetime import datetime
+from pymongo import MongoClient
+import re
 
 # .env ফাইল থেকে Environment Variables লোড করার জন্য
 load_dotenv()
@@ -17,16 +18,17 @@ app = Flask(__name__)
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv('FACEBOOK_PAGE_ACCESS_TOKEN')
 VERIFY_TOKEN = os.getenv('VERIFY_TOKEN')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-WHATSAPP_PHONE_NO = os.getenv('WHATSAPP_PHONE_NO')
+MONGO_URI = os.getenv('MONGO_URI')
+TELEGRAM_USERNAME = os.getenv('TELEGRAM_USERNAME')
 CALLMEBOT_API_KEY = os.getenv('CALLMEBOT_API_KEY')
-MONGO_URI = os.getenv('MONGO_URI') # নতুন: MongoDB কানেকশন স্ট্রিং
 
 # --- ডেটাবেস কানেকশন ---
 try:
     client = MongoClient(MONGO_URI)
-    db = client.chatbot_db # ডেটাবেসের নাম
-    chat_history_collection = db.chat_history # কথোপকথন সেভ করার কালেকশন
-    otn_tokens_collection = db.otn_tokens # OTN টোকেন সেভ করার কালেকশন
+    db = client.chatbot_db
+    chat_history_collection = db.chat_history
+    otn_tokens_collection = db.otn_tokens
+    customer_details_collection = db.customer_details
     print("MongoDB ডেটাবেসের সাথে সফলভাবে সংযুক্ত।")
 except Exception as e:
     print(f"MongoDB সংযোগে সমস্যা: {e}")
@@ -34,7 +36,93 @@ except Exception as e:
 # -------------------------
 
 KNOWLEDGE_BASE = """
-# --- আমার হোমমেড ফ্রোজেন ফুড এর তথ্য ---
+# --- আমার রেস্টুরেন্টের তথ্য ---
+(এখানে আপনার Knowledge Base এর তথ্য থাকবে)
+"""
+
+# Gemini AI মডেল কনফিগার করা
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    print("Gemini AI মডেল সফলভাবে লোড হয়েছে।")
+except Exception as e:
+    print(f"Gemini AI কনফিগারেশনে সমস্যা হয়েছে: {e}")
+    model = None
+
+GRAPH_API_URL = 'https://graph.facebook.com/v18.0/me/messages'
+
+@app.route('/')
+def home():
+    return 'সার্ভারটি সফলভাবে চলছে!', 200
+
+@app.route('/webhook', methods=['GET', 'POST'])
+def webhook():
+    if request.method == 'GET':
+        if request.args.get('hub.verify_token') == VERIFY_TOKEN:
+            return request.args.get('hub.challenge'), 200
+        else:
+            return 'ভেরিফিকেশন টোকেন ভুল', 403
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        if data and data.get('object') == 'page':
+            for entry in data.get('entry', []):
+                for messaging_event in entry.get('messaging', []):
+                    sender_id = messaging_event['sender']['id']
+                    
+                    if messaging_event.get('optin'):
+                        # ... (OTN কোড আগের মতোই থাকবে)
+                        continue
+
+                    if messaging_event.get('message'):
+                        message_text = messaging_event['message'].get('text')
+                        if message_text:
+                            save_message_to_db(sender_id, 'user', message_text)
+                            if model:
+                                try:
+                                    bot_response = get_gemini_response(sender_id, message_text)
+                                    save_message_to_db(sender_id, 'bot', bot_response)
+                                    
+                                    user_facing_response = bot_response
+                                    
+                                    if "[ORDER_CONFIRMED]" in bot_response:
+                                        send_telegram_notification(bot_response)
+                                        apply_date_label(sender_id)
+                                        
+                                        details_match = re.search(r'\[DETAILS:(.*?)\]', bot_response)
+                                        if details_match:
+                                            details_str = details_match.group(1)
+                                            save_customer_details(sender_id, details_str)
+                                        
+                                        user_facing_response = re.sub(r'\[.*?\]', '', bot_response).strip()
+                                        
+                                        send_otn_request(sender_id)
+
+                                    send_facebook_message(sender_id, user_facing_response)
+
+                                except Exception as e:
+                                    print(f"Gemini থেকে উত্তর আনতে সমস্যা হয়েছে: {e}")
+                                    send_facebook_message(sender_id, "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।")
+        return 'Event received', 200
+
+def get_gemini_response(sender_id, message):
+    history = get_chat_history(sender_id)
+    formatted_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
+    
+    # --- পরিবর্তন: গ্রাহকের সেভ করা তথ্য পরীক্ষা করা ---
+    customer_details = get_saved_customer_details(sender_id)
+    details_context = "এই গ্রাহকের কোনো তথ্য আমাদের কাছে সেভ করা নেই।"
+    if customer_details and customer_details.get('address'):
+        saved_address = customer_details.get('address')
+        details_context = f"এই গ্রাহকের একটি ঠিকানা আমাদের কাছে সেভ করা আছে: {saved_address}"
+
+    prompt = f"""
+    ### আপনার ব্যক্তিত্ব (Persona) ###
+    আপনি "ঘরের খাবার" হোমমেড ফ্রোজেন ফুড এর একজন খুবই হাসিখুশি, বন্ধুসুলভ এবং হেল্পফুল মডারেটর। আপনার কথার ধরণ হবে কিছুটা ঘরোয়া এবং আন্তরিক। আপনি সবসময় গ্রাহককে স্যার/ম্যাম বলে সম্বোধন করবেন।
+
+    ### আপনার জ্ঞান (Knowledge Base) ###
+    {KNOWLEDGE_BASE}
+    # --- আমার হোমমেড ফ্রোজেন ফুড এর তথ্য ---
  
 ## আমাদের সম্পর্কে
 আমরা "ঘরের খাবার" সম্পুর্ন বাসায় অত্যন্ত পরচ্ছন্নভাবে ফ্রোজেন ফুড তৈরি করে থাকি। আমারা অনলাইন অর্ডার এবং ডেলিভারি সেবা দিয়ে থাকি। আমাদের প্রধান লক্ষ্য হলো গ্রাহকদের সুস্বাদু এবং স্বাস্থ্যকর খাবার সরবরাহ করা।
@@ -79,99 +167,78 @@ KNOWLEDGE_BASE = """
 - **অর্ডার করার নিয়ম:** মেন্যু থেকে আপনার পছন্দের আইটেম জানান। অর্ডার কনফার্ম করার জন্য আপনার পুরো নাম, ডেলিভারি ঠিকানা, এবং একটি সচল ফোন নম্বর দিন।
 - **পেমেন্ট:** আমরা বর্তমানে শুধুমাত্র ক্যাশ অন ডেলিভারি গ্রহণ করি।
 - **যোগাযোগ:** যেকোনো প্রয়োজনে আমাদের পেজে মেসেজ দিন অথবা whats app নাম্বার 0১৭১৫৯৪৬৫৫৯ নম্বরে কল করুন।
-"""
+    ### গ্রাহকের সেভ করা তথ্য (Saved Customer Details) ###
+    {details_context}
 
-# Gemini AI মডেল কনফিগার করা
-try:
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
-    print("Gemini AI মডেল সফলভাবে লোড হয়েছে।")
-except Exception as e:
-    print(f"Gemini AI কনফিগারেশনে সমস্যা হয়েছে: {e}")
-    model = None
+    ### গুরুত্বপূর্ণ নির্দেশনা (Strict Instructions) ###
+    1.  কথোপকথন শুরুতেই ঠিকানা চাইবেন না। প্রথমে গ্রাহকের উদ্দেশ্য বোঝার চেষ্টা করুন (তিনি কি মেন্যু দেখতে চান, নাকি অর্ডার করতে চান)।
+    2.  গ্রাহক যখন স্পষ্টভাবে "অর্ডার করব", "অর্ডার করতে চাই", "পাঠিয়ে দিন" এই ধরনের কথা বলবে, শুধুমাত্র তখনই অর্ডারের প্রক্রিয়া শুরু করবেন।
+    3.  অর্ডারের প্রক্রিয়া শুরু করার সময়, প্রথমে "গ্রাহকের সেভ করা তথ্য" অংশটি দেখুন।
+    4.  যদি সেখানে কোনো ঠিকানা সেভ করা থাকে, তাহলে গ্রাহককে জিজ্ঞেস করুন ওই ঠিকানায় অর্ডারটি পাঠাতে হবে কিনা। যেমন: "স্যার/ম্যাম, আপনার অর্ডারটি কি আপনার সেভ করা ঠিকানা '{saved_address}' এইখানে পাঠিয়ে দেবো?"
+    5.  যদি গ্রাহক "হ্যাঁ" বলে, তাহলে সাথে সাথে অর্ডার কনফার্ম করুন। যদি গ্রাহক নতুন ঠিকানা দেয়, তাহলে নতুন ঠিকানাটি ব্যবহার করুন।
+    6.  যদি কোনো ঠিকানা সেভ করা না থাকে, তবেই শুধুমাত্র গ্রাহকের কাছে তার পুরো নাম, ডেলিভারি ঠিকানা, এবং একটি সচল ফোন নম্বর চাইবেন।
+    7.  অর্ডার চূড়ান্তভাবে নিশ্চিত হলে (গ্রাহক পুরনো ঠিকানায় রাজি হলে বা নতুন ঠিকানা দিলে), আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMED]" ট্যাগটি যোগ করবেন। এরপর একটি নতুন লাইনে "[DETAILS:নাম=..., ঠিকানা=..., ফোন=...]" এই ফরম্যাটে গ্রাহকের সম্পূর্ণ তথ্য যোগ করবেন।
 
-# Facebook Graph API-এর URL
-GRAPH_API_URL = 'https://graph.facebook.com/v18.0/me/messages'
+    ### কথোপকথনের উদাহরণ (Conversation Examples) ###
+    ---
+    **স্যাম্পল ১: প্রথমবার অর্ডার**
+    user: "একটা চিকেন নাগেট আর ফ্রেঞ্চ ফ্রাই অর্ডার করতে চাই।"
+    (বট দেখবে কোনো ঠিকানা সেভ করা নেই)
+    bot: "অবশ্যই, স্যার/ম্যাম! আপনার অর্ডারটি ডেলিভারি করার জন্য দয়া করে আপনার পুরো নাম, ডেলিভারি ঠিকানা, এবং একটি সচল ফোন নম্বর দিন।"
+    user: "নাম: আকাশ, ঠিকানা: মিরপুর ডিওএইচএস, রোড-১, বাড়ি-৫, ঢাকা। ফোন: ০১৬xxxxxxxx"
+    bot: "[ORDER_CONFIRMED] [DETAILS:নাম=আকাশ, ঠিকানা=মিরপুর ডিওএইচএস, রোড-১, বাড়ি-৫, ঢাকা, ফোন=০১৬xxxxxxxx] ধন্যবাদ, স্যার! আপনার অর্ডারটি কনফার্ম করা হয়েছে। 🎉 আমরা দ্রুত আপনার সাথে যোগাযোগ করব।"
+    ---
+    **স্যাম্পল ২: রিপিট কাস্টমার (৩০ দিন পর)**
+    user: "হাই, আমি কিছু ফ্রোজেন আইটেম অর্ডার করতে চাই।"
+    (বট দেখবে ঠিকানা সেভ করা আছে)
+    bot: "আপনাকে আবার স্বাগত, স্যার/ম্যাম! 😊 অবশ্যই অর্ডার করতে পারবেন। আপনার অর্ডারটি কি আপনার সেভ করা ঠিকানা 'মিরপুর ডিওএইচএস, রোড-১, বাড়ি-৫, ঢাকা' এইখানে পাঠিয়ে দেবো?"
+    user: "হ্যাঁ, ওই ঠিকানাতেই পাঠান।"
+    bot: "[ORDER_CONFIRMED] [DETAILS:নাম=আকাশ, ঠিকানা=মিরপুর ডিওএইচএস, রোড-১, বাড়ি-৫, ঢাকা, ফোন=০১৬xxxxxxxx] ধন্যবাদ, স্যার! আপনার অর্ডারটি আপনার সেভ করা ঠিকানার জন্য কনফার্ম করা হয়েছে। আর কিছু কি লাগবে আপনার?"
+    ---
 
-@app.route('/')
-def home():
-    return 'সার্ভারটি সফলভাবে চলছে!', 200
+    ### আপনার কাজ ###
+    এখন, উপরে দেওয়া ব্যক্তিত্ব, জ্ঞান এবং উদাহরণগুলো অনুসরণ করে, এবং পূর্বের কথোপকথন ও সেভ করা গ্রাহকের তথ্য মাথায় রেখে, নিচের নতুন মেসেজটির উত্তর দিন।
 
-@app.route('/webhook', methods=['GET', 'POST'])
-def webhook():
-    if request.method == 'GET':
-        # Webhook ভেরিফিকেশন
-        if request.args.get('hub.verify_token') == VERIFY_TOKEN:
-            return request.args.get('hub.challenge'), 200
-        else:
-            return 'ভেরিফিকেশন টোকেন ভুল', 403
-    
-    if request.method == 'POST':
-        data = request.get_json()
-        if data and data.get('object') == 'page':
-            for entry in data.get('entry', []):
-                for messaging_event in entry.get('messaging', []):
-                    sender_id = messaging_event['sender']['id']
-                    
-                    # --- নতুন: OTN অনুমতি হ্যান্ডেল করা ---
-                    if messaging_event.get('optin'):
-                        if messaging_event['optin'].get('type') == 'one_time_notif_req':
-                            otn_token = messaging_event['optin']['one_time_notif_token']
-                            save_otn_token(sender_id, otn_token)
-                            send_facebook_message(sender_id, "ধন্যবাদ! আমরা পরবর্তী অফার এলে আপনাকে জানাবো।")
-                        continue # লুপের পরবর্তী ধাপে চলে যাবে
-
-                    if messaging_event.get('message'):
-                        message_text = messaging_event['message'].get('text')
-                        if message_text:
-                            save_message_to_db(sender_id, 'user', message_text)
-                            if model:
-                                try:
-                                    bot_response = get_gemini_response(sender_id, message_text)
-                                    save_message_to_db(sender_id, 'bot', bot_response)
-                                    
-                                    if "[ORDER_CONFIRMED]" in bot_response:
-                                        send_whatsapp_notification(bot_response)
-                                        apply_date_label(sender_id)
-                                        user_facing_response = bot_response.replace("[ORDER_CONFIRMED]", "").strip()
-                                        send_facebook_message(sender_id, user_facing_response)
-                                        # অর্ডার কনফার্ম করার পর OTN রিকুয়েস্ট পাঠানো
-                                        send_otn_request(sender_id)
-                                    else:
-                                        send_facebook_message(sender_id, bot_response)
-
-                                except Exception as e:
-                                    print(f"Gemini থেকে উত্তর আনতে সমস্যা হয়েছে: {e}")
-                                    send_facebook_message(sender_id, "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।")
-        return 'Event received', 200
-
-def get_gemini_response(sender_id, message):
-    # --- নতুন: ডেটাবেস থেকে হিস্টোরি নেওয়া ---
-    history = get_chat_history(sender_id)
-    formatted_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
-
-    prompt = f"""
-    আপনি "ফুড ফিউশন" ক্যাফের একজন হেল্পফুল অ্যাসিস্ট্যান্ট। আপনার কাজ হলো নিচে দেওয়া তথ্য এবং পূর্বের কথোপকথনের উপর ভিত্তি করে উত্তর দেওয়া।
-
-    --- এখানে আমাদের তথ্য ---
-    {KNOWLEDGE_BASE}
-    --- তথ্য শেষ ---
-
-    --- পূর্বের কথোপকথন ---
+    ### পূর্বের কথোপকথন ###
     {formatted_history}
-    --- কথোপকথন শেষ ---
 
-    গুরুত্বপূর্ণ নির্দেশনা:
-    1. অর্ডার নিশ্চিত হলে, আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMED]" ট্যাগটি যোগ করবেন।
-
-    এখন, এই তথ্যের উপর ভিত্তি করে নিচের নতুন প্রশ্নের উত্তর দিন:
+    ### নতুন মেসেজ ###
     user: "{message}"
     bot: 
     """
+    
     response = model.generate_content(prompt)
     return response.text
 
-# --- নতুন ফাংশন: ডেটাবেসে মেসেজ সেভ করার জন্য ---
+def save_customer_details(sender_id, details_str):
+    try:
+        details = dict(item.split("=") for item in details_str.strip().split(", "))
+        if client:
+            customer_details_collection.update_one(
+                {'sender_id': sender_id},
+                {'$set': {
+                    'name': details.get('নাম'),
+                    'address': details.get('ঠিকানা'),
+                    'phone': details.get('ফোন'),
+                    'last_updated': datetime.utcnow()
+                }},
+                upsert=True
+            )
+            print(f"গ্রাহক {sender_id}-এর তথ্য সেভ/আপডেট করা হয়েছে।")
+    except Exception as e:
+        print(f"গ্রাহকের তথ্য পার্স বা সেভ করতে সমস্যা: {e}")
+
+# --- পরিবর্তিত ফাংশন: গ্রাহকের যেকোনো সময়ের তথ্য আনার জন্য ---
+def get_saved_customer_details(sender_id):
+    if client:
+        details = customer_details_collection.find_one({'sender_id': sender_id})
+        # সময়ের কোনো সীমাবদ্ধতা নেই, তথ্য থাকলেই ফেরত দেবে
+        if details:
+             return details
+    return None
+
+# (বাকি সব ফাংশন আগের মতোই থাকবে, যেমন: save_message_to_db, get_chat_history, send_otn_request, send_telegram_notification, apply_date_label, send_facebook_message)
+# ...
 def save_message_to_db(sender_id, role, content):
     if client:
         chat_history_collection.insert_one({
@@ -180,16 +247,11 @@ def save_message_to_db(sender_id, role, content):
             'content': content,
             'timestamp': datetime.utcnow()
         })
-
-# --- নতুন ফাংশন: ডেটাবেস থেকে হিস্টোরি আনার জন্য ---
 def get_chat_history(sender_id, limit=5):
     if client:
-        # শেষ ৫টি মেসেজ আনা হচ্ছে
         history_cursor = chat_history_collection.find({'sender_id': sender_id}).sort('timestamp', -1).limit(limit)
-        return list(history_cursor)[::-1] # পুরাতন থেকে নতুন 순서
+        return list(history_cursor)[::-1]
     return []
-
-# --- নতুন ফাংশন: OTN রিকুয়েস্ট পাঠানোর জন্য ---
 def send_otn_request(recipient_id):
     params = {'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
     headers = {'Content-Type': 'application/json'}
@@ -206,22 +268,60 @@ def send_otn_request(recipient_id):
             }
         }
     }
+    requests.post(GRAPH_API_URL, params=params, headers=headers, json=data)
+def send_telegram_notification(order_details):
+    if not TELEGRAM_USERNAME or not CALLMEBOT_API_KEY:
+        print("Telegram নোটিফিকেশনের জন্য প্রয়োজনীয় তথ্য সেট করা নেই।")
+        return
+    message_body = f"*নতুন অর্ডার এসেছে!*\n\n{order_details.replace('[ORDER_CONFIRMED]', '').strip()}"
+    encoded_message = urllib.parse.quote_plus(message_body)
+    api_url = f"https://api.callmebot.com/text.php?user={TELEGRAM_USERNAME}&text={encoded_message}&apikey={CALLMEBOT_API_KEY}"
     try:
-        requests.post(GRAPH_API_URL, params=params, headers=headers, json=data, timeout=10)
+        response = requests.get(api_url, timeout=10)
+        if response.status_code == 200:
+            print("সফলভাবে Telegram নোটিফিকেশন পাঠানো হয়েছে।")
+        else:
+            print(f"Telegram নোটিফিকেশন পাঠাতে সমস্যা হয়েছে: {response.text}")
     except requests.exceptions.RequestException as e:
-        print(f"OTN রিকুয়েস্ট পাঠাতে সমস্যা হয়েছে: {e}")
-
-# --- নতুন ফাংশন: OTN টোকেন সেভ করার জন্য ---
-def save_otn_token(sender_id, token):
-    if client:
-        otn_tokens_collection.insert_one({
-            'sender_id': sender_id,
-            'token': token,
-            'used': False,
-            'created_at': datetime.utcnow()
-        })
-        print(f"ব্যবহারকারী {sender_id}-এর জন্য OTN টোকেন সেভ করা হয়েছে।")
-
+        print(f"CallMeBot API-তে কল করতে সমস্যা হয়েছে: {e}")
+def get_or_create_label_id(label_name):
+    get_labels_url = f"https://graph.facebook.com/v18.0/me/custom_labels"
+    params = {'fields': 'name', 'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
+    try:
+        response = requests.get(get_labels_url, params=params, timeout=10)
+        response.raise_for_status()
+        existing_labels = response.json().get('data', [])
+        for label in existing_labels:
+            if label.get('name') == label_name:
+                print(f"বিদ্যমান লেবেল পাওয়া গেছে: {label_name}")
+                return label.get('id')
+        print(f"নতুন লেবেল তৈরি করা হচ্ছে: {label_name}")
+        create_label_url = f"https://graph.facebook.com/v18.0/me/custom_labels"
+        data = {'name': label_name}
+        response = requests.post(create_label_url, params={'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}, json=data, timeout=10)
+        response.raise_for_status()
+        new_label = response.json()
+        return new_label.get('id')
+    except requests.exceptions.RequestException as e:
+        print(f"লেবেল তৈরি বা খুঁজতে সমস্যা হয়েছে: {e}")
+        return None
+def apply_date_label(user_psid):
+    today_label_name = datetime.now().strftime("%d-%m-%Y")
+    label_id = get_or_create_label_id(today_label_name)
+    if not label_id:
+        print("লেবেল আইডি পাওয়া যায়নি, তাই লেবেল যোগ করা সম্ভব হচ্ছে না।")
+        return
+    apply_label_url = f"https://graph.facebook.com/v18.0/{label_id}/label"
+    params = {'user': user_psid, 'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
+    try:
+        response = requests.post(apply_label_url, params=params, timeout=10)
+        response.raise_for_status()
+        if response.json().get('success'):
+            print(f"ব্যবহারকারী {user_psid}-কে সফলভাবে '{today_label_name}' লেবেল দেওয়া হয়েছে।")
+        else:
+            print(f"লেবেল দিতে সমস্যা হয়েছে: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        print(f"ফেসবুক লেবেল API-তে কল করতে সমস্যা হয়েছে: {e}")
 def send_facebook_message(recipient_id, message_text):
     params = {'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
     headers = {'Content-Type': 'application/json'}
@@ -234,66 +334,4 @@ def send_facebook_message(recipient_id, message_text):
         requests.post(GRAPH_API_URL, params=params, headers=headers, json=data, timeout=10)
     except requests.exceptions.RequestException as e:
         print(f"ফেসবুকে মেসেজ পাঠাতে সমস্যা হয়েছে: {e}")
-
-def send_whatsapp_notification(order_details):
-    if not WHATSAPP_PHONE_NO or not CALLMEBOT_API_KEY:
-        print("WhatsApp নোটিফিকেশনের জন্য প্রয়োজনীয় তথ্য সেট করা নেই।")
-        return
-    
-    message_body = f"*নতুন অর্ডার এসেছে!*\n\n{order_details.replace('[ORDER_CONFIRMED]', '').strip()}"
-    encoded_message = urllib.parse.quote_plus(message_body)
-    
-    api_url = f"https://api.callmebot.com/whatsapp.php?phone={WHATSAPP_PHONE_NO}&text={encoded_message}&apikey={CALLMEBOT_API_KEY}"
-    
-    try:
-        response = requests.get(api_url, timeout=10)
-        if response.status_code == 200:
-            print("সফলভাবে WhatsApp নোটিফিকেশন পাঠানো হয়েছে।")
-        else:
-            print(f"WhatsApp নোটিফিকেশন পাঠাতে সমস্যা হয়েছে: {response.text}")
-    except requests.exceptions.RequestException as e:
-        print(f"CallMeBot API-তে কল করতে সমস্যা হয়েছে: {e}")
-
-def get_or_create_label_id(label_name):
-    get_labels_url = f"https://graph.facebook.com/v18.0/me/custom_labels"
-    params = {'fields': 'name', 'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
-    try:
-        response = requests.get(get_labels_url, params=params, timeout=10)
-        response.raise_for_status()
-        existing_labels = response.json().get('data', [])
-        
-        for label in existing_labels:
-            if label.get('name') == label_name:
-                return label.get('id')
-
-        create_label_url = f"https://graph.facebook.com/v18.0/me/custom_labels"
-        data = {'name': label_name}
-        
-        response = requests.post(create_label_url, params={'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}, json=data, timeout=10)
-        response.raise_for_status()
-        new_label = response.json()
-        return new_label.get('id')
-
-    except requests.exceptions.RequestException as e:
-        print(f"লেবেল তৈরি বা খুঁজতে সমস্যা হয়েছে: {e}")
-        return None
-
-def apply_date_label(user_psid):
-    today_label_name = datetime.now().strftime("%d-%m-%Y")
-    label_id = get_or_create_label_id(today_label_name)
-    
-    if not label_id:
-        print("লেবেল আইডি পাওয়া যায়নি।")
-        return
-
-    apply_label_url = f"https://graph.facebook.com/v18.0/{label_id}/label"
-    params = {'user': user_psid, 'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
-    
-    try:
-        response = requests.post(apply_label_url, params=params, timeout=10)
-        response.raise_for_status()
-        if response.json().get('success'):
-            print(f"ব্যবহারকারীকে সফলভাবে '{today_label_name}' লেবেল দেওয়া হয়েছে।")
-    except requests.exceptions.RequestException as e:
-        print(f"ফেসবুক লেবেল API-তে কল করতে সমস্যা হয়েছে: {e}")
 
