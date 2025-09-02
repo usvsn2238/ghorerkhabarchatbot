@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 from pymongo import MongoClient
 import re
-from groq import Groq # <-- নতুন ইম্পোর্ট: google.generativeai এর পরিবর্তে
+from groq import Groq
 
 # .env ফাইল থেকে Environment Variables লোড করার জন্য
 load_dotenv()
@@ -17,7 +17,7 @@ app = Flask(__name__)
 # Environment Variables থেকে Key এবং Token গুলো নেওয়া
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv('FACEBOOK_PAGE_ACCESS_TOKEN')
 VERIFY_TOKEN = os.getenv('VERIFY_TOKEN')
-GROQ_API_KEY = os.getenv('GROQ_API_KEY') # <-- পরিবর্তন: GEMINI_API_KEY এর পরিবর্তে
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 MONGO_URI = os.getenv('MONGO_URI')
 TELEGRAM_USERNAME = os.getenv('TELEGRAM_USERNAME')
 CALLMEBOT_API_KEY = os.getenv('CALLMEBOT_API_KEY')
@@ -49,7 +49,7 @@ KNOWLEDGE_BASE = """
 ৪) চিকেন সমুচা ১৫ পিসের প্যাক ২২৫ টাকা 
 ৫) ভেজিটেবল সমুচা ১৫ পিসের প্যাক ১৫০ টাকা 
 ৬) বিফ সমুচা ১০ পিসের প্যাক ২৫০ টাকা 
-৭) চিকেন সিঙ্গারা ۱۰ পিসের  প্যাক ১৫০ টাকা 
+৭) চিকেন সিঙ্গারা ১০ পিসের  প্যাক ১৫০ টাকা 
 ৮) আলু সিঙ্গারা ১০ পিসের প্যাক ১০০ টাকা 
 ৯) চিকেন কলিজা সিঙ্গারা ১০ পিসের প্যাক ১৬০ টাকা ।
 ১০) আলু পুরি  ২০ পিসের প্যাক ১৬০ টাকা 
@@ -83,7 +83,7 @@ KNOWLEDGE_BASE = """
 - **যোগাযোগ:** যেকোনো প্রয়োজনে আমাদের পেজে মেসেজ দিন অথবা whats app নাম্বার 0১৭১৫৯৪৬৫৫৯ নম্বরে কল করুন।
 """
 
-# --- পরিবর্তন: Groq ক্লায়েন্ট কনফিগার করা ---
+# Groq ক্লায়েন্ট কনফিগার করা
 try:
     groq_client = Groq(api_key=GROQ_API_KEY)
     print("Groq AI ক্লায়েন্ট সফলভাবে লোড হয়েছে।")
@@ -209,7 +209,7 @@ def get_groq_response(sender_id, message):
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=messages_for_api,
-            model="llama3-8b-8192",
+            model="llama3-70b-8192", # <-- পরিবর্তন: নতুন এবং শক্তিশালী মডেল
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
