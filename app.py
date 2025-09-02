@@ -36,8 +36,51 @@ except Exception as e:
 # -------------------------
 
 KNOWLEDGE_BASE = """
-# --- আমার রেস্টুরেন্টের তথ্য ---
-(এখানে আপনার Knowledge Base এর তথ্য থাকবে)
+# --- আমার হোমমেড ফ্রোজেন ফুড এর তথ্য ---
+ 
+## আমাদের সম্পর্কে
+আমরা "ঘরের খাবার" সম্পুর্ন বাসায় অত্যন্ত পরচ্ছন্নভাবে ফ্রোজেন ফুড তৈরি করে থাকি। আমারা অনলাইন অর্ডার এবং ডেলিভারি সেবা দিয়ে থাকি। আমাদের প্রধান লক্ষ্য হলো গ্রাহকদের সুস্বাদু এবং স্বাস্থ্যকর খাবার সরবরাহ করা।
+## মেন্যু লিস্ট
+### আসসালামু আলাইকুম 
+আপনাদের জন্য নিয়ে এসেছি সুস্বাদু এবং স্বাস্থ্যকর ফ্রোজেন ফুডের মেন্যু। নিচে আমাদের মেন্যু লিস্ট দেওয়া হলো:
+১) চিকেন রোল ১৫ পিসের প্যাক    ২২৫ টাকা
+২) ভেজিটেবল রোল ১৫ পিসের প্যাক ১৫০ টাকা
+৩) বিফ রোল ১০ পিসের প্যাক ২৫০ টাকা 
+৪) চিকেন সমুচা ১৫ পিসের প্যাক ২২৫ টাকা 
+৫) ভেজিটেবল সমুচা ১৫ পিসের প্যাক ১৫০ টাকা 
+৬) বিফ সমুচা ১০ পিসের প্যাক ২৫০ টাকা 
+৭) চিকেন সিঙ্গারা ১০ পিসের  প্যাক ১৫০ টাকা 
+৮) আলু সিঙ্গারা ১০ পিসের প্যাক ১০০ টাকা 
+৯) চিকেন কলিজা সিঙ্গারা ۱۰ পিসের প্যাক ১৬০ টাকা ।
+১০) আলু পুরি  ২০ পিসের প্যাক ১৬০ টাকা 
+১১) ডাল পুরি ২০ পিসের প্যাক ১৬০ টাকা 
+১২) চিকেন নাগেটস ১২ পিসের প্যাক ২৪০ টাকা 
+১৩) চিকেন টিকিয়া কাবাব ১২ পিসের প্যাক ২৪০ টাকা
+১৪) চিকেন ঝাল ডোনাট  ১২ পিসের প্যাক ২৪০ টাকা
+১৫) চিকেন কাটলেট ১২ পিসের প্যাক ২৪০ টাকা । 
+১৬) চারকোনা পরোটা  
+      ক)২০ পিসের প্যাক(১২০০gm )220টাকা ।
+      খ)২০ পিসের প্যাক (১৫০০ gm) 260টাকা।
+      গ) ১০ পিস আলু পরোটা ২৫০ টাকা
+
+১৭) আটা রুটি ২০ পিসের প্যাক ১৬০ টাকা 
+১৮) ময়দা রুটি ২০ পিসের প্যাক ১৮০ টাকা 
+১৯) লাল আটা রুটি  ২০ পিসের প্যাক ১৮০ টাকা 
+২০) চাউলের রুটি ২০ পিসের প্যাক 200 টাকা 
+২১) পাটি সাপটা ১০ পিসের প্যাক ২০০ টাকা
+২২) অন্থন ১০ পিসের প্যাক ১৫০ টাকা 
+২৩) সুজির হালুয়া ৪০০ টাকা কেজি 
+২৪) গাজরের হালুয়া ৮০০ টাকা কেজি 
+২৫) বুটের হালুয়া ৭০০ টাকা কেজি 
+(বি: দ্রঃ কমপক্ষে যে কোন ২ প্যাক অর্ডার করতে হবে)
+
+## পলিসি এবং প্রায়শই জিজ্ঞাসিত প্রশ্ন (FAQ)
+- **অর্ডার প্রসেসিং সময়:** অর্ডার কনফার্ম হওয়ার পর ২৪ থেকে ৭২ ঘণ্টার মধ্যে ডেলিভারি করা হয়। এটি আমাদের কাজের চাপ এবং ডেলিভারি লোকেশনের উপর নির্ভর করে।
+- **ডেলিভারি এলাকা:মিরপুর, উত্তরা, বসুন্ধরা, গুলশান, তেজগাঁও, বনশ্রী , রামপুরা, ধানমন্ডি, মোহাম্মদপুর, আজিমপুর, পল্টন, মালিবাগ, শ্যামলী, কুড়িল, কলাবাগান, মগবাজার, নিকুঞ্জ, বনানী, বাড্ডা,  এলাকায় ডেলিভারি করা হয়। অন্যান্য এলাকার জন্য আলাদা আলোচনা প্রয়োজন হতে পারে।
+- **ডেলিভারি চার্জ:** ৬০ টাকা।  
+- **অর্ডার করার নিয়ম:** মেন্যু থেকে আপনার পছন্দের আইটেম জানান। অর্ডার কনফার্ম করার জন্য আপনার পুরো নাম, ডেলিভারি ঠিকানা, এবং একটি সচল ফোন নম্বর দিন।
+- **পেমেন্ট:** আমরা বর্তমানে শুধুমাত্র ক্যাশ অন ডেলিভারি গ্রহণ করি।
+- **যোগাযোগ:** যেকোনো প্রয়োজনে আমাদের পেজে মেসেজ দিন অথবা whats app নাম্বার 0১৭১৫৯৪৬৫৫৯ নম্বরে কল করুন।
 """
 
 # Gemini AI মডেল কনফিগার করা
@@ -71,7 +114,11 @@ def webhook():
                     sender_id = messaging_event['sender']['id']
                     
                     if messaging_event.get('optin'):
-                        # ... (OTN কোড আগের মতোই থাকবে)
+                        # OTN opt-in handling
+                        if messaging_event['optin'].get('type') == 'one_time_notif_req':
+                            otn_token = messaging_event['optin']['one_time_notif_token']
+                            save_otn_token(sender_id, otn_token)
+                            send_facebook_message(sender_id, "ধন্যবাদ! আমরা পরবর্তী অফার এলে আপনাকে জানাবো।")
                         continue
 
                     if messaging_event.get('message'):
@@ -109,9 +156,9 @@ def get_gemini_response(sender_id, message):
     history = get_chat_history(sender_id)
     formatted_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
     
-    # --- পরিবর্তন: গ্রাহকের সেভ করা তথ্য পরীক্ষা করা ---
     customer_details = get_saved_customer_details(sender_id)
     details_context = "এই গ্রাহকের কোনো তথ্য আমাদের কাছে সেভ করা নেই।"
+    saved_address = "" # <-- সমস্যার সমাধান: ভ্যারিয়েবলটি আগে থেকেই তৈরি করে রাখা হলো
     if customer_details and customer_details.get('address'):
         saved_address = customer_details.get('address')
         details_context = f"এই গ্রাহকের একটি ঠিকানা আমাদের কাছে সেভ করা আছে: {saved_address}"
@@ -122,51 +169,7 @@ def get_gemini_response(sender_id, message):
 
     ### আপনার জ্ঞান (Knowledge Base) ###
     {KNOWLEDGE_BASE}
-    # --- আমার হোমমেড ফ্রোজেন ফুড এর তথ্য ---
- 
-## আমাদের সম্পর্কে
-আমরা "ঘরের খাবার" সম্পুর্ন বাসায় অত্যন্ত পরচ্ছন্নভাবে ফ্রোজেন ফুড তৈরি করে থাকি। আমারা অনলাইন অর্ডার এবং ডেলিভারি সেবা দিয়ে থাকি। আমাদের প্রধান লক্ষ্য হলো গ্রাহকদের সুস্বাদু এবং স্বাস্থ্যকর খাবার সরবরাহ করা।
-## মেন্যু লিস্ট
-### আসসালামু আলাইকুম 
-আপনাদের জন্য নিয়ে এসেছি সুস্বাদু এবং স্বাস্থ্যকর ফ্রোজেন ফুডের মেন্যু। নিচে আমাদের মেন্যু লিস্ট দেওয়া হলো:
-১) চিকেন রোল ১৫ পিসের প্যাক    ২২৫ টাকা
-২) ভেজিটেবল রোল ১৫ পিসের প্যাক ১৫০ টাকা
-৩) বিফ রোল ১০ পিসের প্যাক ২৫০ টাকা 
-৪) চিকেন সমুচা ১৫ পিসের প্যাক ২২৫ টাকা 
-৫) ভেজিটেবল সমুচা ১৫ পিসের প্যাক ১৫০ টাকা 
-৬) বিফ সমুচা ১০ পিসের প্যাক ২৫০ টাকা 
-৭) চিকেন সিঙ্গারা ১০ পিসের  প্যাক ১৫০ টাকা 
-৮) আলু সিঙ্গারা ১০ পিসের প্যাক ১০০ টাকা 
-৯) চিকেন কলিজা সিঙ্গারা ১০ পিসের প্যাক ১৬০ টাকা ।
-১০) আলু পুরি  ২০ পিসের প্যাক ১৬০ টাকা 
-১১) ডাল পুরি ২০ পিসের প্যাক ১৬০ টাকা 
-১২) চিকেন নাগেটস ১২ পিসের প্যাক ২৪০ টাকা 
-১৩) চিকেন টিকিয়া কাবাব ১২ পিসের প্যাক ২৪০ টাকা
-১৪) চিকেন ঝাল ডোনাট  ১২ পিসের প্যাক ২৪০ টাকা
-১৫) চিকেন কাটলেট ১২ পিসের প্যাক ২৪০ টাকা । 
-১৬) চারকোনা পরোটা  
-      ক)২০ পিসের প্যাক(১২০০gm )220টাকা ।
-      খ)২০ পিসের প্যাক (১৫০০ gm) 260টাকা।
-      গ) ১০ পিস আলু পরোটা ২৫০ টাকা
-
-১৭) আটা রুটি ২০ পিসের প্যাক ১৬০ টাকা 
-১৮) ময়দা রুটি ২০ পিসের প্যাক ১৮০ টাকা 
-১৯) লাল আটা রুটি  ২০ পিসের প্যাক ১৮০ টাকা 
-২০) চাউলের রুটি ২০ পিসের প্যাক 200 টাকা 
-২১) পাটি সাপটা ১০ পিসের প্যাক ২০০ টাকা
-২২) অন্থন ১০ পিসের প্যাক ১৫০ টাকা 
-২৩) সুজির হালুয়া ৪০০ টাকা কেজি 
-২৪) গাজরের হালুয়া ৮০০ টাকা কেজি 
-২৫) বুটের হালুয়া ৭০০ টাকা কেজি 
-(বি: দ্রঃ কমপক্ষে যে কোন ২ প্যাক অর্ডার করতে হবে)
-
-## পলিসি এবং প্রায়শই জিজ্ঞাসিত প্রশ্ন (FAQ)
-- **অর্ডার প্রসেসিং সময়:** অর্ডার কনফার্ম হওয়ার পর ২৪ থেকে ৭২ ঘণ্টার মধ্যে ডেলিভারি করা হয়। এটি আমাদের কাজের চাপ এবং ডেলিভারি লোকেশনের উপর নির্ভর করে।
-- **ডেলিভারি এলাকা:মিরপুর, উত্তরা, বসুন্ধরা, গুলশান, তেজগাঁও, বনশ্রী , রামপুরা, ধানমন্ডি, মোহাম্মদপুর, আজিমপুর, পল্টন, মালিবাগ, শ্যামলী, কুড়িল, কলাবাগান, মগবাজার, নিকুঞ্জ, বনানী, বাড্ডা,  এলাকায় ডেলিভারি করা হয়। অন্যান্য এলাকার জন্য আলাদা আলোচনা প্রয়োজন হতে পারে।
-- **ডেলিভারি চার্জ:** ৬০ টাকা।  
-- **অর্ডার করার নিয়ম:** মেন্যু থেকে আপনার পছন্দের আইটেম জানান। অর্ডার কনফার্ম করার জন্য আপনার পুরো নাম, ডেলিভারি ঠিকানা, এবং একটি সচল ফোন নম্বর দিন।
-- **পেমেন্ট:** আমরা বর্তমানে শুধুমাত্র ক্যাশ অন ডেলিভারি গ্রহণ করি।
-- **যোগাযোগ:** যেকোনো প্রয়োজনে আমাদের পেজে মেসেজ দিন অথবা whats app নাম্বার 0১৭১৫৯৪৬৫৫৯ নম্বরে কল করুন।
+    
     ### গ্রাহকের সেভ করা তথ্য (Saved Customer Details) ###
     {details_context}
 
@@ -228,17 +231,13 @@ def save_customer_details(sender_id, details_str):
     except Exception as e:
         print(f"গ্রাহকের তথ্য পার্স বা সেভ করতে সমস্যা: {e}")
 
-# --- পরিবর্তিত ফাংশন: গ্রাহকের যেকোনো সময়ের তথ্য আনার জন্য ---
 def get_saved_customer_details(sender_id):
     if client:
         details = customer_details_collection.find_one({'sender_id': sender_id})
-        # সময়ের কোনো সীমাবদ্ধতা নেই, তথ্য থাকলেই ফেরত দেবে
         if details:
              return details
     return None
 
-# (বাকি সব ফাংশন আগের মতোই থাকবে, যেমন: save_message_to_db, get_chat_history, send_otn_request, send_telegram_notification, apply_date_label, send_facebook_message)
-# ...
 def save_message_to_db(sender_id, role, content):
     if client:
         chat_history_collection.insert_one({
@@ -252,6 +251,7 @@ def get_chat_history(sender_id, limit=5):
         history_cursor = chat_history_collection.find({'sender_id': sender_id}).sort('timestamp', -1).limit(limit)
         return list(history_cursor)[::-1]
     return []
+
 def send_otn_request(recipient_id):
     params = {'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
     headers = {'Content-Type': 'application/json'}
@@ -269,6 +269,7 @@ def send_otn_request(recipient_id):
         }
     }
     requests.post(GRAPH_API_URL, params=params, headers=headers, json=data)
+
 def send_telegram_notification(order_details):
     if not TELEGRAM_USERNAME or not CALLMEBOT_API_KEY:
         print("Telegram নোটিফিকেশনের জন্য প্রয়োজনীয় তথ্য সেট করা নেই।")
@@ -284,6 +285,7 @@ def send_telegram_notification(order_details):
             print(f"Telegram নোটিফিকেশন পাঠাতে সমস্যা হয়েছে: {response.text}")
     except requests.exceptions.RequestException as e:
         print(f"CallMeBot API-তে কল করতে সমস্যা হয়েছে: {e}")
+
 def get_or_create_label_id(label_name):
     get_labels_url = f"https://graph.facebook.com/v18.0/me/custom_labels"
     params = {'fields': 'name', 'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
@@ -293,9 +295,7 @@ def get_or_create_label_id(label_name):
         existing_labels = response.json().get('data', [])
         for label in existing_labels:
             if label.get('name') == label_name:
-                print(f"বিদ্যমান লেবেল পাওয়া গেছে: {label_name}")
                 return label.get('id')
-        print(f"নতুন লেবেল তৈরি করা হচ্ছে: {label_name}")
         create_label_url = f"https://graph.facebook.com/v18.0/me/custom_labels"
         data = {'name': label_name}
         response = requests.post(create_label_url, params={'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}, json=data, timeout=10)
@@ -305,11 +305,11 @@ def get_or_create_label_id(label_name):
     except requests.exceptions.RequestException as e:
         print(f"লেবেল তৈরি বা খুঁজতে সমস্যা হয়েছে: {e}")
         return None
+
 def apply_date_label(user_psid):
     today_label_name = datetime.now().strftime("%d-%m-%Y")
     label_id = get_or_create_label_id(today_label_name)
     if not label_id:
-        print("লেবেল আইডি পাওয়া যায়নি, তাই লেবেল যোগ করা সম্ভব হচ্ছে না।")
         return
     apply_label_url = f"https://graph.facebook.com/v18.0/{label_id}/label"
     params = {'user': user_psid, 'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
@@ -318,10 +318,9 @@ def apply_date_label(user_psid):
         response.raise_for_status()
         if response.json().get('success'):
             print(f"ব্যবহারকারী {user_psid}-কে সফলভাবে '{today_label_name}' লেবেল দেওয়া হয়েছে।")
-        else:
-            print(f"লেবেল দিতে সমস্যা হয়েছে: {response.json()}")
     except requests.exceptions.RequestException as e:
         print(f"ফেসবুক লেবেল API-তে কল করতে সমস্যা হয়েছে: {e}")
+
 def send_facebook_message(recipient_id, message_text):
     params = {'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
     headers = {'Content-Type': 'application/json'}
