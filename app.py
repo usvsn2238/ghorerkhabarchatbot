@@ -50,7 +50,7 @@ KNOWLEDGE_BASE = """
 ৩) বিফ রোল ১০ পিসের প্যাক ২৫০ টাকা 
 ৪) চিকেন সমুচা ১৫ পিসের প্যাক ২২৫ টাকা 
 ৫) ভেজিটেবল সমুচা ১৫ পিসের প্যাক ১৫০ টাকা 
-৬) বিফ সমুচা ১০ পিসের প্যাক ২৫০ টাকা 
+৬) বিফ সমুচা ১০ পিসের پ্যাক ২৫০ টাকা 
 ৭) চিকেন সিঙ্গারা ১০ পিসের  প্যাক ১৫০ টাকা 
 ৮) আলু সিঙ্গারা ১০ পিসের প্যাক ১০০ টাকা 
 ৯) চিকেন কলিজা সিঙ্গারা ১০ পিসের প্যাক ১৬০ টাকা ।
@@ -128,8 +128,6 @@ def webhook():
                             if groq_client:
                                 try:
                                     bot_response = get_groq_response(sender_id, message_text)
-                                    # --- চূড়ান্ত পরিবর্তন এখানে ---
-                                    # AI-এর role 'bot' এর পরিবর্তে 'assistant' হিসেবে সেভ করা হচ্ছে
                                     save_message_to_db(sender_id, 'assistant', bot_response)
                                     
                                     user_facing_response = bot_response
@@ -213,7 +211,7 @@ def get_groq_response(sender_id, message):
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=messages_for_api,
-            model="llama3-70b-8192",
+            model="mixtral-8x7b-32768", # <-- চূড়ান্ত পরিবর্তন: নতুন এবং স্থিতিশীল মডেল
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
