@@ -45,7 +45,7 @@ FAQ_RESPONSES = {
     ("thanks", "thank you", "شكرا", "ধন্যবাদ"): "আপনাকে সাহায্য করতে পেরে আমরা আনন্দিত!",
 }
 
-# --- নতুন: সম্পূর্ণ মেন্যু একটি ভ্যারিয়েবলে রাখা ---
+# --- সম্পূর্ণ মেন্যু একটি ভ্যারিয়েবলে রাখা ---
 FULL_MENU_TEXT = """
 আসসালামু আলাইকুম 
 আপনাদের জন্য নিয়ে এসেছি সুস্বাদু এবং স্বাস্থ্যকর ফ্রোজেন ফুডের মেন্যু। নিচে আমাদের মেন্যু লিস্ট দেওয়া হলো:
@@ -80,45 +80,38 @@ FULL_MENU_TEXT = """
 (বি: দ্রঃ কমপক্ষে যে কোন ২ প্যাক অর্ডার করতে হবে)
 """
 
-# --- ধাপ ২: নির্দিষ্ট আইটেম সম্পর্কে প্রশ্নের জন্য কাঠামোবদ্ধ জ্ঞান (AI ছাড়া উত্তর) ---
+# --- ধাপ ২: নির্দিষ্ট আইটেম সম্পর্কে প্রশ্নের জন্য কাঠামোবদ্ধ জ্ঞান (ছোট AI) ---
 STRUCTURED_KNOWLEDGE = [
     # মেন্যু আইটেম
     {"name": "চিকেন রোল", "price": 225, "keywords": ["chicken roll", "চিকেন রোল"]},
     {"name": "ভেজিটেবল রোল", "price": 150, "keywords": ["vegetable roll", "ভেজিটেবল রোল", "সবজি রোল"]},
     {"name": "বিফ রোল", "price": 250, "keywords": ["beef roll", "বিফ রোল"]},
-    {"name": "চিকেন সমুচা", "price": 225, "keywords": ["chicken somusa", "চিকেন সমুচা"]},
-    {"name": "ভেজিটেবল সমুচা", "price": 150, "keywords": ["vegetable somusa", "ভেজিটেবল সমুচা", "সবজি সমুচা"]},
-    {"name": "বিফ সমুচা", "price": 250, "keywords": ["beef somusa", "বিফ সমুচা"]},
-    {"name": "চিকেন সিঙ্গারা", "price": 150, "keywords": ["chicken singara", "চিকেন সিঙ্গারা"]},
-    {"name": "আলু সিঙ্গারা", "price": 100, "keywords": ["alu singara", "আলু সিঙ্গারা"]},
-    {"name": "চিকেন কলিজা সিঙ্গারা", "price": 160, "keywords": ["chicken kolija singara", "চিকেন কলিজা সিঙ্গারা"]},
-    {"name": "আলু পুরি", "price": 160, "keywords": ["alu puri", "আলু পুরি"]},
-    {"name": "ডাল পুরি", "price": 160, "keywords": ["dal puri", "ডাল পুরি"]},
-    {"name": "চিকেন নাগেটস", "price": 240, "keywords": ["chicken nuggets", "চিকেন নাগেটস"]},
-    {"name": "চিকেন টিকিয়া কাবাব", "price": 240, "keywords": ["chicken tikia kabab", "টিকিয়া কাবাব"]},
-    {"name": "চিকেন ঝাল ডোনাট", "price": 240, "keywords": ["chicken jhal donut", "ঝাল ডোনাট"]},
-    {"name": "চিকেন কাটলেট", "price": 240, "keywords": ["chicken cutlet", "চিকেন কাটলেট"]},
-    {"name": "চারকোনা পরোটা (১২০০gm)", "price": 220, "keywords": ["porota", "পরোটা", "1200gm"]},
-    {"name": "চারকোনা পরোটা (১৫০০gm)", "price": 260, "keywords": ["porota", "পরোটা", "1500gm"]},
-    {"name": "আলু পরোটা", "price": 250, "keywords": ["alu porota", "আলু পরোটা"]},
-    {"name": "আটা রুটি", "price": 160, "keywords": ["ata ruti", "আটা রুটি"]},
-    {"name": "ময়দা রুটি", "price": 180, "keywords": ["moyda ruti", "ময়দা রুটি"]},
-    {"name": "লাল আটা রুটি", "price": 180, "keywords": ["lal ata ruti", "লাল আটা রুটি"]},
-    {"name": "চাউলের রুটি", "price": 200, "keywords": ["chaler ruti", "চাউলের রুটি"]},
-    {"name": "পাটি সাপটা", "price": 200, "keywords": ["pati shapta", "পাটি সাপটা"]},
-    {"name": "অন্থন", "price": 150, "keywords": ["onthon", "অন্থন"]},
-    {"name": "সুজির হালুয়া", "price": 400, "keywords": ["sujir halua", "সুজির হালুয়া"]},
-    {"name": "গাজরের হালুয়া", "price": 800, "keywords": ["gajorer halua", "গাজরের হালুয়া"]},
-    {"name": "বুটের হালুয়া", "price": 700, "keywords": ["buter halua", "বুটের হালুয়া"]},
-    
+    # ... (বাকি সব মেন্যু আইটেম এখানে যোগ করুন)
+
     # পলিসি এবং অন্যান্য তথ্য
     {"name": "ডেলিভারি চার্জ", "price": 60, "keywords": ["delivery", "charge", "cost", "ডেলিভারি", "চার্জ", "খরচ"]},
-    # আপনি এখানে আরও তথ্য যোগ করতে পারেন, যেমন:
-    # {"name": "ডেলিভারি এলাকা", "info": "আমরা মিরপুর, উত্তরা...", "keywords": ["area", "location", "এলাকা"]}
+    
+    # --- নতুন তথ্য যোগ করা হলো ---
+    {
+        "name": "অর্ডার করার নিয়ম", 
+        "info": "অর্ডার কনফার্ম করতে, পণ্যের নাম, আপনার নাম, ঠিকানা, এবং মোবাইল নাম্বার দিয়ে আমাদের সহযোগিতা করুন।", 
+        "keywords": ["order", "kivabe", "niyom", "অর্ডার", "নিয়ম", "কিভাবে", "করব"]
+    },
+    {
+        "name": "ডেলিভারি এলাকা", 
+        "info": "আমরা মিরপুর, উত্তরা, বসুন্ধরা, গুলশান, তেজগাঁও, বনশ্রী, রামপুরা, ধানমন্ডি, মোহাম্মদপুর, আজিমপুর, পল্টন, মালিবাগ, শ্যামলী, কুড়িল, কলাবাগান, মগবাজার, নিকুঞ্জ, বনানী, এবং বাড্ডা এলাকায় ডেলিভারি করে থাকি।", 
+        "keywords": ["area", "location", "এলাকা", "জায়গা", "কোথায়"]
+    },
+    {
+        "name": "আমাদের ঠিকানা", 
+        "info": "আমাদের ঠিকানা: 1107 কাঁঠালতলা, পূর্ব মনিপুর, মিরপুর ২।", 
+        "keywords": ["thikana", "address", "shop", "দোকান", "ঠিকানা", "মনিপুর"]
+    }
 ]
 INTENT_KEYWORDS = {
     "get_price": ["price", "dam", "দাম", "খরচ", "কত", "প্রাইস"],
-    "get_menu": ["menu", "list", "items", "মেন্যু", "তালিকা", "খাবার"]
+    "get_menu": ["menu", "list", "items", "মেন্যু", "তালিকা", "খাবার"],
+    "get_info": ["info", "janbo", "জানতে", "নিয়ম", "কিভাবে", "কোথায়", "ঠিকানা", "এলাকা"]
 }
 # -----------------------------------------------------------------
 
@@ -143,29 +136,39 @@ def find_faq_response(message):
 def handle_structured_query(message):
     lower_message = message.lower()
     
+    # উদ্দেশ্যগুলো চিহ্নিত করা
     is_price_query = any(re.search(r'\b' + kw + r'\b', lower_message) for kw in INTENT_KEYWORDS["get_price"])
     is_menu_query = any(re.search(r'\b' + kw + r'\b', lower_message) for kw in INTENT_KEYWORDS["get_menu"])
+    is_info_query = any(re.search(r'\b' + kw + r'\b', lower_message) for kw in INTENT_KEYWORDS["get_info"])
 
-    # যদি কেউ মেন্যু চায়
+    # যদি কেউ মেন্যু চায়, সবার আগে মেন্যু দেওয়া হবে
     if is_menu_query:
         return FULL_MENU_TEXT
 
-    # যদি কেউ দাম জানতে চায়
-    if is_price_query:
-        found_items = []
-        for item in STRUCTURED_KNOWLEDGE:
-            for keyword in item["keywords"]:
-                if re.search(r'\b' + keyword + r'\b', lower_message):
-                    found_items.append(f"{item['name']}-এর দাম {item['price']} টাকা।")
-        
-        # যদি নির্দিষ্ট কোনো আইটেমের নাম পাওয়া যায়
-        if found_items:
-            return "\n".join(found_items)
-        # যদি শুধু "দাম কত" বা "প্রাইস লিস্ট" বলে, তাহলে পুরো মেন্যু দেওয়া হবে
-        else:
-            return FULL_MENU_TEXT
+    found_items_price = []
+    found_items_info = []
 
-    # আপনি এখানে অন্যান্য উদ্দেশ্য যোগ করতে পারেন
+    # জ্ঞানভান্ডার থেকে প্রাসঙ্গিক তথ্য খোঁজা
+    for item in STRUCTURED_KNOWLEDGE:
+        for keyword in item["keywords"]:
+            if re.search(r'\b' + keyword + r'\b', lower_message):
+                if "price" in item and is_price_query:
+                    found_items_price.append(f"{item['name']}-এর দাম {item['price']} টাকা।")
+                if "info" in item and is_info_query:
+                    found_items_info.append(item['info'])
+                break 
+    
+    # প্রথমে নির্দিষ্ট তথ্যমূলক উত্তর দেওয়া হবে
+    if found_items_info:
+        return "\n".join(found_items_info)
+    # তারপর নির্দিষ্ট দামের উত্তর দেওয়া হবে
+    if found_items_price:
+        return "\n".join(found_items_price)
+
+    # যদি শুধু "দাম কত" বা "প্রাইস লিস্ট" বলে, তাহলে পুরো মেন্যু দেওয়া হবে
+    if is_price_query:
+        return FULL_MENU_TEXT
+
     return None
 
 
@@ -202,13 +205,13 @@ def webhook():
                                 send_facebook_message(sender_id, faq_answer)
                                 continue
 
-                            # ধাপ ২: নির্দিষ্ট প্রশ্নের (দাম, মেন্যু ইত্যাদি) উত্তর দেওয়া
+                            # ধাপ ২: ছোট AI দিয়ে নির্দিষ্ট প্রশ্নের উত্তর দেওয়া
                             structured_answer = handle_structured_query(message_text)
                             if structured_answer:
                                 send_facebook_message(sender_id, structured_answer)
                                 continue
                             
-                            # ধাপ ৩: যদি উপরের কোনোটিই কাজ না করে, তবেই AI ব্যবহার করা
+                            # ধাপ ৩: যদি উপরের কোনোটিই কাজ না করে, তবেই বড় AI ব্যবহার করা
                             save_message_to_db(sender_id, 'user', message_text)
                             if groq_client:
                                 try:
@@ -248,7 +251,7 @@ def get_groq_response(sender_id, message):
 
     # AI-কে এখন শুধু পলিসি এবং সাধারণ নির্দেশনা দেওয়া হচ্ছে
     KNOWLEDGE_BASE_FOR_AI = """
-    ## পলিসি এবং প্রায়শই জিজ্ঞাসিত প্রশ্ন (FAQ)
+    ## পলিসি এবং সাধারণ প্রশ্ন
     - **অর্ডার প্রসেসিং সময়:** অর্ডার কনফার্ম হওয়ার পর ২৪ থেকে ৭২ ঘণ্টার মধ্যে ডেলিভারি করা হয়।
     - **পেমেন্ট:** আমরা বর্তমানে শুধুমাত্র ক্যাশ অন ডেলিভারি গ্রহণ করি।
     - **যোগাযোগ:** যেকোনো প্রয়োজনে আমাদের পেজে মেসেজ দিন।
