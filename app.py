@@ -103,7 +103,6 @@ def get_full_knowledge_base():
     if not client:
         return "কোনো তথ্য পাওয়া যায়নি।"
     try:
-        # শুধুমাত্র মেন্যু সম্পর্কিত তথ্য আনা হচ্ছে
         all_docs = knowledge_collection.find({})
         knowledge_text = "\n".join([doc.get("information", "") for doc in all_docs])
         return knowledge_text if knowledge_text else "কোনো তথ্য পাওয়া যায়নি।"
@@ -142,7 +141,7 @@ def webhook():
                             contains_welcome_keyword = any(keyword in message_text.lower() for keyword in WELCOME_KEYWORDS)
 
                             # ধাপ ১: প্রথম মেসেজ বা ওয়েলকাম কীওয়ার্ড পরীক্ষা
-                            if history_count <= 1 or contains_welcome_keyword:
+                            if history_count <= 1 or (contains_welcome_keyword and len(message_text.split()) < 4):
                                 save_message_to_db(sender_id, 'user', message_text)
                                 send_facebook_message(sender_id, WELCOME_MESSAGE_1)
                                 time.sleep(1) # দুটি মেসেজের মধ্যে সামান্য বিরতি
@@ -159,7 +158,7 @@ def webhook():
                                     
                                     user_facing_response = bot_response
                                     
-                                    if "[ORDER_CONFIRMATION]" in bot_response: # ট্যাগ পরিবর্তন
+                                    if "[ORDER_CONFIRMATION]" in bot_response:
                                         bill_match = re.search(r'\[BILL:(\d+\.?\d*)\]', bot_response)
                                         total_bill = bill_match.group(1) if bill_match else "মোট বিল"
                                         
@@ -181,7 +180,7 @@ def webhook():
         return 'Event received', 200
 
 def get_gemini_response(sender_id, message):
-    history = get_chat_history(sender_id, limit=5)
+    history = get_chat_history(sender_id, limit=6)
     formatted_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
 
     customer_details = get_saved_customer_details(sender_id)
@@ -204,22 +203,20 @@ def get_gemini_response(sender_id, message):
     {details_context}
 
     ### কঠোর নির্দেশনা (Strict Instructions) ###
-    1.  সর্বদা এবং শুধুমাত্র "আপনার জ্ঞান" এবং "পূর্বের কথোপকথন" এর উপর ভিত্তি করে উত্তর দিন। এর বাইরে কোনো উত্তর দেওয়া যাবে না।
-    2.  **হিসাব করার নিয়ম:** যদি গ্রাহক একাধিক আইটেমের মোট দাম জানতে চায়, তাহলে অবশ্যই নিচের ধাপগুলো অনুসরণ করবেন:
-        - ধাপ ১: "পূর্বের কথোপকথন" থেকে আইটেম এবং তাদের পরিমাণ শনাক্ত করুন।
-        - ধাপ ২: "আপনার জ্ঞান" থেকে প্রতিটি আইটেমের দাম খুঁজে বের করুন।
-        - ধাপ ৩: প্রতিটি আইটেমের জন্য (দাম x পরিমাণ) হিসাব করুন।
-        - ধাপ ৪: ডেলিভারি চার্জ (যদি প্রযোজ্য হয়) যোগ করুন।
-        - ধাপ ৫: একটি সুন্দর ব্রেকডাউনসহ মোট বিল দেখান।
-    3.  **অর্ডার কনফার্ম করার নিয়ম:** গ্রাহক যখন স্পষ্টভাবে অর্ডার নিশ্চিত করবে (যেমন: "জ্বি", "কনফার্ম", "পাঠিয়ে দিন"), তখন আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMATION]" ট্যাগটি যোগ করবেন। এরপর একটি নতুন লাইনে "[BILL:মোট_টাকা]" ট্যাগ এবং তারপর "[DETAILS:নাম=..., ঠিকানা=..., ফোন=...]" এই ফরম্যাটে গ্রাহকের সম্পূর্ণ তথ্য যোগ করবেন। যদি কোনো তথ্য (যেমন: নাম) না জানেন, তাহলে 'N/A' লিখবেন।
+    1.  সর্বদা এবং শুধুমাত্র "আপনার জ্ঞান" এবং "পূর্বের কথোপকথন" এর উপর ভিত্তি করে উত্তর দিন।
+    2.  **প্রসঙ্গ বোঝার নিয়ম:** যদি আপনার আগের প্রশ্নে আপনি কোনো কনফার্মেশন চেয়ে থাকেন (যেমন: "আপনি কি অর্ডার করতে চান?") এবং গ্রাহক "জ্বি", "হ্যাঁ", "hmm", "ok", "কনফার্ম" এই ধরনের কোনো ইতিবাচক উত্তর দেয়, তাহলে প্রশ্নটি পুনরাবৃত্তি না করে অর্ডারের পরবর্তী ধাপে চলে যাবেন।
+    3.  **হিসাব করার নিয়ম:** যদি গ্রাহক একাধিক আইটেমের মোট দাম জানতে চায়, তাহলে "পূর্বের কথোপকথন" এবং "আপনার জ্ঞান" থেকে আইটেম ও দাম নিয়ে সঠিকভাবে হিসাব করে একটি ব্রেকডাউন সহ মোট বিল দেখাবেন।
+    4.  **অর্ডার কনফার্ম করার নিয়ম:** গ্রাহক যখন স্পষ্টভাবে অর্ডার নিশ্চিত করবে, তখন আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMATION]" ট্যাগটি যোগ করবেন। এরপর "[BILL:মোট_টাকা]" এবং "[DETAILS:নাম=..., ঠিকানা=..., ফোন=...]" ট্যাগগুলো যোগ করবেন। যদি কোনো তথ্য না জানেন, তাহলে 'N/A' লিখবেন।
     
     ### কথোপকথনের উদাহরণ ###
-    user: আমার এক প্যাকেট চিকেন রোল আর এক প্যাকেট চিকেন সিঙ্গারা লাগবে।
-    model: আমাদের কাছে চিকেন রোল ১৫ পিসের প্যাকের দাম ২২৫ টাকা এবং চিকেন সিঙ্গারা ১০ পিসের প্যাকের দাম ১৫০ টাকা। আপনি কি এই দুটি আইটেম অর্ডার করতে চান?
-    user: জ্বি, মোট দাম কত আসবে ডেলিভারি চার্জ সহ?
-    model: অবশ্যই, স্যার/ম্যাম! আপনার দুটি আইটেমের মোট দাম আসছে:\n- চিকেন রোল (১ প্যাকেট): ২২৫ টাকা\n- চিকেন সিঙ্গারা (১ প্যাকেট): ১৫০ টাকা\n- ডেলিভারি চার্জ: ৬০ টাকা\n\nসর্বমোট: ২২৫ + ১৫০ + ৬০ = ৪৩৫ টাকা।
-    user: ওকে, কনফার্ম।
-    model: [ORDER_CONFIRMATION]\n[BILL:435]\n[DETAILS:নাম=N/A, ঠিকানা=N/A, ফোন=N/A]
+    user: আমার এক প্যাকেট চিকেন রোল আর এক প্যাকেট পরোটা লাগবে।
+    model: আপনি কোন পরোটা নিতে আগ্রহী? আমাদের কাছে আলু পরোটা এবং বিভিন্ন সাইজের চারকোনা পরোটা আছে।
+    user: চারকোনা পরোটা ১২০০ গ্রাম।
+    model: ঠিক আছে, স্যার/ম্যাম। আপনার দুটি আইটেম হলো: ১ প্যাকেট চিকেন রোল এবং ১ প্যাকেট চারকোনা পরোটা (১২০০gm)। আপনি কি অর্ডারটি কনফার্ম করতে চান?
+    user: জ্বি
+    model: অবশ্যই! আপনার দুটি আইটেমের মোট দাম আসছে:\n- চিকেন রোল (১ প্যাকেট): ২২৫ টাকা\n- চারকোনা পরোটা (১২০০gm): ২২০ টাকা\n- ডেলিভারি চার্জ: ৬০ টাকা\n\nসর্বমোট: ২২৫ + ২২০ + ৬০ = ৫০৫ টাকা। আপনার ঠিকানা কি আগেরটিই থাকবে?
+    user: হ্যাঁ, কনফার্ম।
+    model: [ORDER_CONFIRMATION]\n[BILL:505]\n[DETAILS:নাম=N/A, ঠিকানা={saved_address}, ফোন=N/A]
 
     ### পূর্বের কথোপকথন ###
     {formatted_history}
@@ -246,7 +243,7 @@ def save_message_to_db(sender_id, role, content):
     if client:
         chat_history_collection.insert_one({'sender_id': sender_id,'role': role,'content': content,'timestamp': datetime.utcnow()})
 
-def get_chat_history(sender_id, limit=5):
+def get_chat_history(sender_id, limit=6):
     if client:
         history_cursor = chat_history_collection.find({'sender_id': sender_id}).sort('timestamp', -1).limit(limit)
         history = []
