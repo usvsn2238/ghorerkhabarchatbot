@@ -48,7 +48,6 @@ FAQ_RESPONSES = {
 # --- Gemini AI মডেল কনফিগার করা ---
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    # --- চূড়ান্ত পরিবর্তন: সরাসরি নির্দিষ্ট মডেলের নাম উল্লেখ করা হলো ---
     model = genai.GenerativeModel('gemini-2.5-flash-lite') 
     print("Gemini AI মডেল (2.5 Flash-Lite) সফলভাবে লোড হয়েছে।")
 except Exception as e:
@@ -65,20 +64,37 @@ def find_faq_response(message):
                 return response
     return None
 
+# --- চূড়ান্ত পরিবর্তন: আরও বুদ্ধিমান RAG ফাংশন ---
 def find_relevant_knowledge(message):
     if not client:
         return None
     try:
-        words = set(re.split(r'\s|[,.?]', message.lower()))
-        knowledge_cursor = knowledge_collection.find({"keywords": {"$in": list(words)}})
+        # গ্রাহকের মেসেজ থেকে অর্থবহ শব্দগুলো বের করা
+        words = re.split(r'\s|[,.?]', message.lower())
+        meaningful_words = [word for word in words if word]
+        if not meaningful_words:
+            return None
+            
+        # একটি Regex প্যাটার্ন তৈরি করা যা যেকোনো একটি শব্দ খুঁজবে
+        # উদাহরণ: "chicken roll dam" -> "chicken|roll|dam"
+        regex_pattern = "|".join(meaningful_words)
+        regex_query = re.compile(regex_pattern, re.IGNORECASE)
+
+        # ডেটাবেসে এমন ডকুমেন্ট খোঁজা হচ্ছে যার keywords তালিকার কোনো একটি শব্দ এই প্যাটার্নের সাথে মেলে
+        knowledge_cursor = knowledge_collection.find({"keywords": {"$regex": regex_query}})
+        
         information_list = [doc.get("information") for doc in knowledge_cursor if doc.get("information")]
+        
         if information_list:
             print(f"ডেটাবেস থেকে {len(information_list)} টি প্রাসঙ্গিক তথ্য পাওয়া গেছে (RAG)।")
             return "\n".join(information_list)
+            
     except Exception as e:
         print(f"ডেটাবেস থেকে জ্ঞান খুঁজতে সমস্যা: {e}")
+        
     print("ডেটাবেসে কোনো প্রাসঙ্গিক তথ্য পাওয়া যায়নি।")
     return None
+
 
 @app.route('/')
 def home():
