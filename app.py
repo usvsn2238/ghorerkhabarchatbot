@@ -103,6 +103,7 @@ def get_full_knowledge_base():
     if not client:
         return "কোনো তথ্য পাওয়া যায়নি।"
     try:
+        # শুধুমাত্র মেন্যু সম্পর্কিত তথ্য আনা হচ্ছে
         all_docs = knowledge_collection.find({})
         knowledge_text = "\n".join([doc.get("information", "") for doc in all_docs])
         return knowledge_text if knowledge_text else "কোনো তথ্য পাওয়া যায়নি।"
@@ -158,14 +159,10 @@ def webhook():
                                     
                                     user_facing_response = bot_response
                                     
-                                    if "[ORDER_CONFIRMED]" in bot_response:
-                                        send_telegram_notification(bot_response)
-                                        apply_date_label(sender_id)
-                                        
-                                        bill_match = re.search(r'\[BILL:(\d+)\]', bot_response)
+                                    if "[ORDER_CONFIRMATION]" in bot_response: # ট্যাগ পরিবর্তন
+                                        bill_match = re.search(r'\[BILL:(\d+\.?\d*)\]', bot_response)
                                         total_bill = bill_match.group(1) if bill_match else "মোট বিল"
                                         
-                                        # চূড়ান্ত কনফার্মেশন মেসেজ তৈরি এবং পাঠানো
                                         confirmation_message = ORDER_CONFIRMATION_TEMPLATE.format(total_bill)
                                         send_facebook_message(sender_id, confirmation_message)
                                         
@@ -176,7 +173,6 @@ def webhook():
                                         
                                         send_otn_request(sender_id)
                                     else:
-                                        # সাধারণ AI উত্তর পাঠানো
                                         send_facebook_message(sender_id, user_facing_response)
 
                                 except Exception as e:
@@ -199,7 +195,7 @@ def get_gemini_response(sender_id, message):
 
     prompt = f"""
     ### আপনার ব্যক্তিত্ব (Persona) ###
-    আপনি "ঘরের খাবার" এর একজন হেল্পফুল এবং পেশাদার মডারেটর।
+    আপনি "ঘরের খাবার" এর একজন দক্ষ এবং পেশাদার সহকারী। আপনার উত্তর হবে সংক্ষিপ্ত, নির্ভুল এবং সাহায্যকারী।
 
     ### আপনার জ্ঞান (Knowledge Base) ###
     {knowledge_base_for_prompt}
@@ -208,15 +204,22 @@ def get_gemini_response(sender_id, message):
     {details_context}
 
     ### কঠোর নির্দেশনা (Strict Instructions) ###
-    1.  সর্বদা এবং শুধুমাত্র "আপনার জ্ঞান" সেকশনে দেওয়া তথ্যের উপর ভিত্তি করে উত্তর দিন।
-    2.  যদি গ্রাহক একাধিক আইটেমের পরিমাণ উল্লেখ করে অর্ডার করতে চায় বা মোট দাম জানতে চায়, তাহলে অবশ্যই "আপনার জ্ঞান" থেকে প্রতিটি আইটেমের দাম নিয়ে সঠিকভাবে হিসাব করে একটি মোট বিল তৈরি করবেন।
-    3.  অর্ডার চূড়ান্তভাবে নিশ্চিত হলে, আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMED]" ট্যাগটি যোগ করবেন। এরপর একটি নতুন লাইনে "[BILL:মোট_টাকা]" ট্যাগ এবং তারপর "[DETAILS:নাম=..., ঠিকানা=..., ফোন=...]" এই ফরম্যাটে গ্রাহকের সম্পূর্ণ তথ্য যোগ করবেন।
+    1.  সর্বদা এবং শুধুমাত্র "আপনার জ্ঞান" এবং "পূর্বের কথোপকথন" এর উপর ভিত্তি করে উত্তর দিন। এর বাইরে কোনো উত্তর দেওয়া যাবে না।
+    2.  **হিসাব করার নিয়ম:** যদি গ্রাহক একাধিক আইটেমের মোট দাম জানতে চায়, তাহলে অবশ্যই নিচের ধাপগুলো অনুসরণ করবেন:
+        - ধাপ ১: "পূর্বের কথোপকথন" থেকে আইটেম এবং তাদের পরিমাণ শনাক্ত করুন।
+        - ধাপ ২: "আপনার জ্ঞান" থেকে প্রতিটি আইটেমের দাম খুঁজে বের করুন।
+        - ধাপ ৩: প্রতিটি আইটেমের জন্য (দাম x পরিমাণ) হিসাব করুন।
+        - ধাপ ৪: ডেলিভারি চার্জ (যদি প্রযোজ্য হয়) যোগ করুন।
+        - ধাপ ৫: একটি সুন্দর ব্রেকডাউনসহ মোট বিল দেখান।
+    3.  **অর্ডার কনফার্ম করার নিয়ম:** গ্রাহক যখন স্পষ্টভাবে অর্ডার নিশ্চিত করবে (যেমন: "জ্বি", "কনফার্ম", "পাঠিয়ে দিন"), তখন আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMATION]" ট্যাগটি যোগ করবেন। এরপর একটি নতুন লাইনে "[BILL:মোট_টাকা]" ট্যাগ এবং তারপর "[DETAILS:নাম=..., ঠিকানা=..., ফোন=...]" এই ফরম্যাটে গ্রাহকের সম্পূর্ণ তথ্য যোগ করবেন। যদি কোনো তথ্য (যেমন: নাম) না জানেন, তাহলে 'N/A' লিখবেন।
     
     ### কথোপকথনের উদাহরণ ###
     user: আমার এক প্যাকেট চিকেন রোল আর এক প্যাকেট চিকেন সিঙ্গারা লাগবে।
     model: আমাদের কাছে চিকেন রোল ১৫ পিসের প্যাকের দাম ২২৫ টাকা এবং চিকেন সিঙ্গারা ১০ পিসের প্যাকের দাম ১৫০ টাকা। আপনি কি এই দুটি আইটেম অর্ডার করতে চান?
-    user: জ্বি, কনফার্ম।
-    model: [ORDER_CONFIRMED]\n[BILL:435]\n[DETAILS:নাম=N/A, ঠিকানা=N/A, ফোন=N/A]
+    user: জ্বি, মোট দাম কত আসবে ডেলিভারি চার্জ সহ?
+    model: অবশ্যই, স্যার/ম্যাম! আপনার দুটি আইটেমের মোট দাম আসছে:\n- চিকেন রোল (১ প্যাকেট): ২২৫ টাকা\n- চিকেন সিঙ্গারা (১ প্যাকেট): ১৫০ টাকা\n- ডেলিভারি চার্জ: ৬০ টাকা\n\nসর্বমোট: ২২৫ + ১৫০ + ৬০ = ৪৩৫ টাকা।
+    user: ওকে, কনফার্ম।
+    model: [ORDER_CONFIRMATION]\n[BILL:435]\n[DETAILS:নাম=N/A, ঠিকানা=N/A, ফোন=N/A]
 
     ### পূর্বের কথোপকথন ###
     {formatted_history}
@@ -288,7 +291,7 @@ def send_otn_request(recipient_id):
 def send_telegram_notification(order_details):
     if not TELEGRAM_USERNAME or not CALLMEBOT_API_KEY:
         return
-    message_body = f"*নতুন অর্ডার এসেছে!*\n\n{order_details.replace('[ORDER_CONFIRMED]', '').strip()}"
+    message_body = f"*নতুন অর্ডার এসেছে!*\n\n{order_details.replace('[ORDER_CONFIRMATION]', '').strip()}"
     encoded_message = urllib.parse.quote_plus(message_body)
     api_url = f"https://api.callmebot.com/text.php?user={TELEGRAM_USERNAME}&text={encoded_message}&apikey={CALLMEBOT_API_KEY}"
     try:
