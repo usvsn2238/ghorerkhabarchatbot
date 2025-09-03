@@ -6,7 +6,7 @@ import urllib.parse
 from datetime import datetime
 from pymongo import MongoClient
 import re
-from groq import Groq
+import google.generativeai as genai
 import certifi
 
 # .env ফাইল থেকে Environment Variables লোড করার জন্য
@@ -18,12 +18,10 @@ app = Flask(__name__)
 # Environment Variables থেকে Key এবং Token গুলো নেওয়া
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv('FACEBOOK_PAGE_ACCESS_TOKEN')
 VERIFY_TOKEN = os.getenv('VERIFY_TOKEN')
-GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 MONGO_URI = os.getenv('MONGO_URI')
 TELEGRAM_USERNAME = os.getenv('TELEGRAM_USERNAME')
 CALLMEBOT_API_KEY = os.getenv('CALLMEBOT_API_KEY')
-GROQ_MODEL_NAME = os.getenv('GROQ_MODEL_NAME', 'llama-3.1-8b-instant')
-
 
 # --- ডেটাবেস কানেকশন ---
 try:
@@ -33,7 +31,7 @@ try:
     chat_history_collection = db.chat_history
     otn_tokens_collection = db.otn_tokens
     customer_details_collection = db.customer_details
-    knowledge_collection = db.knowledge_base # জ্ঞানভান্ডার এখন পুরোপুরি ডেটাবেসে
+    knowledge_collection = db.knowledge_base
     print("MongoDB ডেটাবেসের সাথে সফলভাবে সংযুক্ত।")
 except Exception as e:
     print(f"MongoDB সংযোগে সমস্যা: {e}")
@@ -47,13 +45,15 @@ FAQ_RESPONSES = {
 }
 # ----------------------------------------------------
 
-# Groq ক্লায়েন্ট কনফিগার করা
+# --- Gemini AI মডেল কনফিগার করা ---
 try:
-    groq_client = Groq(api_key=GROQ_API_KEY)
-    print("Groq AI ক্লায়েন্ট সফলভাবে লোড হয়েছে।")
+    genai.configure(api_key=GEMINI_API_KEY)
+    # --- চূড়ান্ত পরিবর্তন: সরাসরি নির্দিষ্ট মডেলের নাম উল্লেখ করা হলো ---
+    model = genai.GenerativeModel('gemini-2.5-flash-lite') 
+    print("Gemini AI মডেল (2.5 Flash-Lite) সফলভাবে লোড হয়েছে।")
 except Exception as e:
-    print(f"Groq AI কনফিগারেশনে সমস্যা হয়েছে: {e}")
-    groq_client = None
+    print(f"Gemini AI কনফিগারেশনে সমস্যা হয়েছে: {e}")
+    model = None
 
 GRAPH_API_URL = 'https://graph.facebook.com/v19.0/me/messages'
 
@@ -65,26 +65,20 @@ def find_faq_response(message):
                 return response
     return None
 
-# RAG: ডেটাবেস থেকে প্রাসঙ্গিক তথ্য খোঁজার ফাংশন
 def find_relevant_knowledge(message):
     if not client:
         return None
     try:
         words = set(re.split(r'\s|[,.?]', message.lower()))
         knowledge_cursor = knowledge_collection.find({"keywords": {"$in": list(words)}})
-        
         information_list = [doc.get("information") for doc in knowledge_cursor if doc.get("information")]
-        
         if information_list:
             print(f"ডেটাবেস থেকে {len(information_list)} টি প্রাসঙ্গিক তথ্য পাওয়া গেছে (RAG)।")
             return "\n".join(information_list)
-            
     except Exception as e:
         print(f"ডেটাবেস থেকে জ্ঞান খুঁজতে সমস্যা: {e}")
-        
-    print("ডেটাবেসে কোনো প্রাসঙ্গিক তথ্য পাওয়া যায়নি। সাধারণ AI ব্যবহার করা হচ্ছে।")
+    print("ডেটাবেসে কোনো প্রাসঙ্গিক তথ্য পাওয়া যায়নি।")
     return None
-
 
 @app.route('/')
 def home():
@@ -115,19 +109,16 @@ def webhook():
                     if messaging_event.get('message'):
                         message_text = messaging_event['message'].get('text')
                         if message_text:
-                            # --- নতুন কার্যপ্রণালী ---
-                            # ধাপ ১: সাধারণ FAQ পরীক্ষা
                             faq_answer = find_faq_response(message_text)
                             if faq_answer:
                                 send_facebook_message(sender_id, faq_answer)
                                 continue
                             
-                            # ধাপ ২: যদি FAQ-তে উত্তর না পাওয়া যায়, তবেই Guided AI ব্যবহার করা
                             save_message_to_db(sender_id, 'user', message_text)
-                            if groq_client:
+                            if model:
                                 try:
-                                    bot_response = get_groq_response(sender_id, message_text)
-                                    save_message_to_db(sender_id, 'assistant', bot_response)
+                                    bot_response = get_gemini_response(sender_id, message_text)
+                                    save_message_to_db(sender_id, 'model', bot_response)
                                     
                                     user_facing_response = bot_response
                                     if "[ORDER_CONFIRMED]" in bot_response:
@@ -142,16 +133,13 @@ def webhook():
                                     send_facebook_message(sender_id, user_facing_response)
 
                                 except Exception as e:
-                                    print(f"Groq থেকে উত্তর আনতে সমস্যা হয়েছে: {e}")
+                                    print(f"Gemini থেকে উত্তর আনতে সমস্যা হয়েছে: {e}")
                                     send_facebook_message(sender_id, "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না।")
         return 'Event received', 200
 
-def get_groq_response(sender_id, message):
+def get_gemini_response(sender_id, message):
     history = get_chat_history(sender_id, limit=3)
-    formatted_history = []
-    for msg in history:
-        if msg.get('role') and msg.get('content'):
-            formatted_history.append({"role": msg.get('role'), "content": msg.get('content')})
+    formatted_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
 
     customer_details = get_saved_customer_details(sender_id)
     details_context = "এই গ্রাহকের কোনো তথ্য আমাদের কাছে সেভ করা নেই।"
@@ -160,11 +148,10 @@ def get_groq_response(sender_id, message):
         saved_address = customer_details.get('address')
         details_context = f"এই গ্রাহকের একটি ঠিকানা আমাদের কাছে সেভ করা আছে: {saved_address}"
     
-    # RAG: ডেটাবেস থেকে শুধুমাত্র প্রাসঙ্গিক তথ্য খোঁজা
     relevant_knowledge = find_relevant_knowledge(message)
     knowledge_base_for_prompt = relevant_knowledge if relevant_knowledge else "প্রাসঙ্গিক কোনো তথ্য পাওয়া যায়নি।"
 
-    system_prompt = f"""
+    prompt = f"""
     ### আপনার ব্যক্তিত্ব (Persona) ###
     আপনি "ঘরের খাবার" এর একজন হেল্পফুল এবং পেশাদার মডারেটর। আপনার কথার ধরণ হবে মার্জিত এবং আন্তরিক।
 
@@ -180,33 +167,42 @@ def get_groq_response(sender_id, message):
     3.  যদি গ্রাহক একাধিক আইটেমের দাম হিসাব করতে বলে, তাহলে "আপনার জ্ঞান" সেকশনে দেওয়া তথ্য ব্যবহার করে গণিত করুন।
     4.  অর্ডার চূড়ান্তভাবে নিশ্চিত হলে, আপনার উত্তরের শুরুতে অবশ্যই "[ORDER_CONFIRMED]" ট্যাগটি যোগ করবেন।
     
-    ### আপনার কাজ ###
-    এখন, উপরে দেওয়া ব্যক্তিত্ব, জ্ঞান এবং কঠোর নির্দেশনাগুলো অনুসরণ করে নিচের নতুন মেসেজটির উত্তর দিন।
-
     ### পূর্বের কথোপকথন ###
     {formatted_history}
 
     ### নতুন মেসেজ ###
     user: "{message}"
+    model: 
     """
     
-    messages_for_api = [
-        {"role": "system", "content": system_prompt},
-        *formatted_history,
-        {"role": "user", "content": message}
-    ]
-
     try:
-        chat_completion = groq_client.chat.completions.create(
-            messages=messages_for_api,
-            model=GROQ_MODEL_NAME,
-        )
-        return chat_completion.choices[0].message.content
+        response = model.generate_content(prompt)
+        return response.text
     except Exception as e:
-        print(f"Groq API Error: {e}")
+        print(f"Gemini API Error: {e}")
         return "দুঃখিত, একটি প্রযুক্তিগত সমস্যা হয়েছে। আমরা বিষয়টি দেখছি।"
 
-# (বাকি সব ফাংশন আগের মতোই থাকবে)
+def save_message_to_db(sender_id, role, content):
+    if client:
+        chat_history_collection.insert_one({
+            'sender_id': sender_id,
+            'role': role,
+            'content': content,
+            'timestamp': datetime.utcnow()
+        })
+
+def get_chat_history(sender_id, limit=3):
+    if client:
+        history_cursor = chat_history_collection.find({'sender_id': sender_id}).sort('timestamp', -1).limit(limit)
+        history = []
+        for doc in history_cursor:
+            role = doc.get('role')
+            if role == 'assistant':
+                role = 'model'
+            history.append({'role': role, 'content': doc.get('content')})
+        return history
+    return []
+    
 def save_customer_details(sender_id, details_str):
     try:
         details = dict(item.split("=") for item in details_str.strip().split(", "))
@@ -230,21 +226,6 @@ def get_saved_customer_details(sender_id):
         if details:
              return details
     return None
-
-def save_message_to_db(sender_id, role, content):
-    if client:
-        chat_history_collection.insert_one({
-            'sender_id': sender_id,
-            'role': role,
-            'content': content,
-            'timestamp': datetime.utcnow()
-        })
-
-def get_chat_history(sender_id, limit=3):
-    if client:
-        history_cursor = chat_history_collection.find({'sender_id': sender_id}).sort('timestamp', -1).limit(limit)
-        return list(history_cursor)[::-1]
-    return []
 
 def send_otn_request(recipient_id):
     params = {'access_token': FACEBOOK_PAGE_ACCESS_TOKEN}
